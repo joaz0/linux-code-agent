@@ -37,7 +37,28 @@ app.include_router(llm_router, prefix="/api/v1/llm", tags=["LLM Management"])
 
 @app.get("/")
 async def root():
-    return {"message": "Linux Code Agent Backend v2.0 is running"}
+    from app.core.aws_toolkit import AWSToolkitDetector
+    from app.core.planner import Planner
+    
+    # Detecta configuração
+    detector = AWSToolkitDetector()
+    planner = Planner()
+    
+    return {
+        "message": "Linux Code Agent Backend v2.0 (Multi-Provider)",
+        "status": "running",
+        "features": {
+            "multi_provider": True,
+            "aws_toolkit_support": detector.detect_credentials(),
+            "available_providers": planner.multi_provider.get_available_providers()
+        },
+        "endpoints": {
+            "chat": "/api/chat",
+            "execute": "/api/execute",
+            "llm_metrics": "/api/v1/llm/metrics",
+            "llm_providers": "/api/v1/llm/providers"
+        }
+    }
 
 
 if __name__ == "__main__":
