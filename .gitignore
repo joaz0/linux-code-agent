@@ -1,0 +1,24 @@
+# Env
+.env
+.env.*
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Logs
+logs/
+app/logs/
+
+# Node / VSCode extension
+node_modules/
+dist/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store

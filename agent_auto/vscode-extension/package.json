@@ -1,0 +1,89 @@
+{
+  "name": "linux-code-agent",
+  "displayName": "Linux Code Agent",
+  "description": "AI-powered code assistant for VS Code on Linux with Python backend integration",
+  "version": "1.0.0",
+  "publisher": "joaz0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joaz0/linux-code-agent"
+  },
+  "icon": "$(resources/robot-icon.svg)",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Programming Languages", "AI"],
+  "keywords": ["ai", "assistant", "code", "linux", "python", "backend"],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "*", 
+    "onView:linux-code-agent.linuxCodeAgentChatView",
+    "onCommand:linux-code-agent.executeTask",
+    "onCommand:linux-code-agent.chat"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "linux-code-agent.executeTask",
+        "title": "Execute Task",
+        "category": "Linux Code Agent",
+        "icon": "$(run)"
+      },
+      {
+        "command": "linux-code-agent.chat",
+        "title": "Chat with Agent",
+        "category": "Linux Code Agent",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "linux-code-agent.quickFix",
+        "title": "Quick Fix Code",
+        "category": "Linux Code Agent",
+        "icon": "$(check)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [{
+        "id": "linux-code-agent",
+        "title": "Linux Code Agent",
+        "icon": "$(robot)"
+      }]
+    },
+    "views": {
+      "linux-code-agent": [{
+        "id": "linuxCodeAgentChatView",
+        "name": "Chat"
+      }]
+    },
+    "configuration": {
+      "title": "Linux Code Agent",
+      "properties": {
+        "linuxCodeAgent.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL do servidor backend Python"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js --production",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.0.0",
+    "typescript": "^5.9.3",
+    "@vscode/vsce": "^2.30.0",
+    "@vscode/test-cli": "^0.0.12"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
