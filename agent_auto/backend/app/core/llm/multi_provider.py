@@ -13,7 +13,7 @@ from app.core.llm.clients.bedrock_client import BedrockClient
 from app.core.llm.cache_system import cache_system
 from app.core.llm.complexity_estimator import complexity_estimator
 from app.core.llm.metrics_logger import metrics_logger
-
+from app.core.llm.clients.gemini_client import GeminiClient
 
 class MultiProviderLLM:
     """Sistema principal de rotacionamento inteligente entre múltiplos provedores."""
@@ -41,6 +41,9 @@ class MultiProviderLLM:
         
         if settings.aws_access_key_id and settings.aws_secret_access_key:
             clients[LLMProvider.BEDROCK] = BedrockClient()
+
+        if settings.gemini_api_key:
+            clients[LLMProvider.GEMINI] = GeminiClient()
         
         return clients
     
