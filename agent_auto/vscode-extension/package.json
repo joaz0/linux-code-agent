@@ -50,10 +50,16 @@
       }]
     },
     "views": {
-      "linux-code-agent": [{
-        "id": "linuxCodeAgentChatView",
-        "name": "Chat"
-      }]
+      "linux-code-agent": [
+        {
+          "id": "linuxCodeAgentChatView",
+          "name": "Chat"
+        },
+        {
+          "id": "linux-code-agent.chatView",
+          "name": "Chat"
+        }
+      ]
     },
     "configuration": {
       "title": "Linux Code Agent",

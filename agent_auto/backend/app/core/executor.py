@@ -1,4 +1,4 @@
-from core.registry import ToolRegistry
+from app.core.registry import ToolRegistry
 
 class Executor:
     def __init__(self, registry: ToolRegistry):

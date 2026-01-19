@@ -75,6 +75,39 @@ python3 -m app.app
 📡 **Servidor**: http://localhost:8000  
 📚 **Docs**: http://localhost:8000/docs
 
+### VS Code Extension
+
+Para executar a extensão do VS Code, siga estas etapas:
+
+1.  **Navegue até o diretório da extensão**:
+    ```bash
+    cd ../vscode-extension
+    ```
+
+2.  **Instale as dependências**:
+    ```bash
+    npm install
+    ```
+
+3.  **Compile a extensão**:
+    ```bash
+    npm run compile
+    ```
+
+4.  **Abra o VS Code no diretório da extensão**:
+    ```bash
+    code .
+    ```
+
+5.  **Inicie a extensão**:
+    - Pressione `F5` para abrir uma nova janela do "Extension Development Host" com a extensão em execução.
+
+6.  **Use a extensão**:
+    - Na nova janela do VS Code, abra a paleta de comandos (`Ctrl+Shift+P` ou `Cmd+Shift+P`).
+    - Procure e selecione o comando `Linux Code Agent: Execute Task`.
+    - Insira um objetivo para a tarefa e pressione `Enter`.
+
+
 ## ✨ Características
 
 ### ✅ **Atual (v0.2.0)**

@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from uuid import uuid4
 import threading
 
-from app.schemas.task_base import TaskBase
+from app.schemas.task import TaskRequest
 from app.schemas.task_status import TaskStatus, TaskState
 from app.schemas.task_execution import TaskResult
 
@@ -19,7 +19,7 @@ class TaskService:
         self._tasks: Dict[str, TaskStatus] = {}
         self._lock = threading.Lock()
     
-    def create_task(self, task_data: TaskBase) -> TaskStatus:
+    def create_task(self, task_data: TaskRequest) -> TaskStatus:
         """
         Cria uma nova task e retorna seu status inicial
         

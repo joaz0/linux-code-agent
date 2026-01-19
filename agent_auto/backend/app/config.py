@@ -10,8 +10,8 @@ class LLMProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENROUTER = "openrouter"
     BEDROCK = "bedrock"
-    OPENAI = "openai"  # Para compatibilidade
-
+    OPENAI = "openai"
+    GEMINI = "gemini"
 
 class TaskComplexity(str, Enum):
     SIMPLE = "simple"    # Listar, ler, buscar
@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = Field(None, env="ANTHROPIC_API_KEY")
     openrouter_api_key: Optional[str] = Field(None, env="OPENROUTER_API_KEY")
     openai_api_key: Optional[str] = Field(None, env="OPENAI_API_KEY")
+    gemini_api_key: Optional[str] = Field(None, env="GEMINI_API_KEY")
     aws_access_key_id: Optional[str] = Field(None, env="AWS_ACCESS_KEY_ID")
     aws_secret_access_key: Optional[str] = Field(None, env="AWS_SECRET_ACCESS_KEY")
     aws_default_region: str = Field("us-east-1", env="AWS_DEFAULT_REGION")
@@ -47,6 +48,12 @@ class Settings(BaseSettings):
     # ============================================
     # SYSTEM CONFIGURATION
     # ============================================
+    llm_provider: Optional[LLMProvider] = Field(None, env="LLM_PROVIDER")
+    llm_model: Optional[str] = Field(None, env="LLM_MODEL")
+    api_host: str = Field("0.0.0.0", env="API_HOST")
+    api_port: int = Field(8000, env="API_PORT")
+    anthropic_base_url: str = Field("https://api.anthropic.com/v1", env="ANTHROPIC_BASE_URL")
+    openrouter_base_url: str = Field("https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
     llm_timeout: int = Field(30, env="LLM_TIMEOUT")
     llm_max_retries: int = Field(3, env="LLM_MAX_RETRIES")
     enable_cache: bool = Field(True, env="ENABLE_CACHE")
@@ -105,6 +112,8 @@ class Settings(BaseSettings):
             providers.append(LLMProvider.BEDROCK)
         if self.openai_api_key:
             providers.append(LLMProvider.OPENAI)
+        if self.gemini_api_key:
+            providers.append(LLMProvider.GEMINI)
             
         return providers
     
@@ -116,6 +125,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 # Instância global das configurações

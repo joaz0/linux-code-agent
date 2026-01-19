@@ -1,15 +1,15 @@
 """
-Schema base para criação de tasks
+Schema para requisição de criação de tasks
 Define a estrutura de entrada da API
 """
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 
-class TaskBase(BaseModel):
+class TaskRequest(BaseModel):
     """
     Dados necessários para criar uma task
-    Representa o input do usuário
+    Representa o input do usuário para o endpoint de execução
     """
     objective: str = Field(
         ...,

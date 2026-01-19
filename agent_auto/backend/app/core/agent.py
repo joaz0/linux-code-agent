@@ -1,5 +1,5 @@
-from core.executor import Executor
-from core.planner import plan
+from app.core.executor import Executor
+from app.core.planner import plan
 
 class Agent:
     def __init__(self, registry):

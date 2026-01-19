@@ -5,7 +5,7 @@ Responsável apenas por: receber requests, validar, chamar services, retornar re
 from typing import Optional
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks, Depends
 
-from app.schemas.task_base import TaskBase
+from app.schemas.task import TaskRequest
 from app.schemas.task_status import (
     TaskStatus, 
     TaskState, 
@@ -14,6 +14,8 @@ from app.schemas.task_status import (
 )
 from app.services.task_service import TaskService, get_task_service
 from app.core.agent import Agent
+from app.core.registry import Tool, ToolRegistry
+from app.tools import fs, git, shell as shell_tools
 
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -21,7 +23,21 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 def get_agent() -> Agent:
     """Dependency para obter instância do Agent"""
-    return Agent()
+    registry = ToolRegistry()
+    
+    # Filesystem tools
+    registry.register(Tool("read_file", "Lê o conteúdo de um arquivo de texto.", fs.read_file))
+    registry.register(Tool("write_file", "Escreve (ou sobrescreve) conteúdo em um arquivo.", fs.write_file))
+    registry.register(Tool("list_files", "Lista arquivos recursivamente em um diretório.", fs.list_files))
+    
+    # Git tools
+    registry.register(Tool("git_status", "Obtém o status do repositório git.", git.git_status))
+    registry.register(Tool("git_commit", "Cria um commit com uma mensagem.", git.git_commit))
+
+    # Shell tools
+    registry.register(Tool("shell", "Executa um comando shell.", shell_tools.shell_tool))
+    
+    return Agent(registry)
 
 
 @router.post(
@@ -32,7 +48,7 @@ def get_agent() -> Agent:
     description="Cria uma task e retorna seu status inicial. A execução é assíncrona."
 )
 async def create_task(
-    task_data: TaskBase,
+    task_data: TaskRequest,
     background_tasks: BackgroundTasks,
     task_service: TaskService = Depends(get_task_service),
     agent: Agent = Depends(get_agent)
@@ -193,7 +209,7 @@ async def delete_task(task_id: str):
 
 async def _execute_task_background(
     task_id: str,
-    task_data: TaskBase,
+    task_data: TaskRequest,
     task_service: TaskService,
     agent: Agent
 ) -> None:
@@ -215,18 +231,21 @@ async def _execute_task_background(
             "Iniciando execução..."
         )
         
+        # Formatar o prompt para o agente
+        prompt = f"Objetivo: {task_data.objective}"
+        if task_data.context:
+            prompt += f"\nContexto: {task_data.context}"
+            
         # Executar via agente
-        result = agent.execute(
-            objective=task_data.objective,
-            context=task_data.context
-        )
+        result = agent.run(prompt)
         
         # Registrar passos executados
-        for action in result.actions_taken:
-            task_service.add_step(
-                task_id,
-                f"{action['tool']}: {action['params']}"
-            )
+        if hasattr(result, 'actions_taken'):
+            for action in result.actions_taken:
+                task_service.add_step(
+                    task_id,
+                    f"{action['tool']}: {action['params']}"
+                )
         
         # Marcar como completa
         task_service.complete_task(task_id, result)

@@ -91,6 +91,7 @@ class Planner:
             Dict com plano no formato {"tool": "...", "params": {...}}
         """
         prompt = self._build_prompt(task, tools)
+        logger.debug(f"Prompt para o LLM:\n{prompt}")
         
         # Determina complexidade para seleção de provider
         complexity = self._estimate_complexity(task)
@@ -158,8 +159,8 @@ NÃO inclua markdown, explicações ou texto adicional."""
         
         # Heurística simples baseada em keywords
         simple_keywords = ["list", "show", "get", "read", "find", "ls", "pwd", "whoami"]
-        medium_keywords = ["edit", "modify", "update", "add", "remove", "create", "write"]
-        complex_keywords = ["refactor", "debug", "optimize", "implement", "multi", "system"]
+        medium_keywords = ["edit", "modify", "update", "add", "remove", "create", "write", "crie"]
+        complex_keywords = ["refactor", "debug", "optimize", "implement", "multi", "system", "refatore"]
         
         if any(keyword in task_lower for keyword in complex_keywords):
             return ComplexityLevel.COMPLEX
