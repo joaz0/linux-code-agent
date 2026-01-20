@@ -21,6 +21,12 @@ try:
 except ImportError:
     ANTHROPIC_AVAILABLE = False
 
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,10 +60,11 @@ class MultiLLMProvider:
         }
         
         # Configuração de preferência por complexidade
+        # Adicionado Gemini como opção em todas as categorias
         self.complexity_mapping = {
-            ComplexityLevel.SIMPLE: ["bedrock", "openrouter", "anthropic"],
-            ComplexityLevel.MEDIUM: ["openrouter", "bedrock", "anthropic"],
-            ComplexityLevel.COMPLEX: ["anthropic", "openrouter", "bedrock"]
+            ComplexityLevel.SIMPLE: ["openrouter", "gemini", "bedrock", "anthropic"],
+            ComplexityLevel.MEDIUM: ["openrouter", "gemini", "bedrock", "anthropic"],
+            ComplexityLevel.COMPLEX: ["openrouter", "anthropic", "gemini", "bedrock"]
         }
         
         logger.info(f"MultiLLMProvider inicializado com {len(self.providers)} provedores")
@@ -70,9 +77,9 @@ class MultiLLMProvider:
         if OPENAI_AVAILABLE and os.getenv("OPENAI_API_KEY"):
             providers["openai"] = ProviderConfig(
                 name="openai",
-                model="gpt-4o-mini",
-                cost_per_1k_input=0.0015,
-                cost_per_1k_output=0.006,
+                model="gpt-4o",  # Atualizado para GPT-4o conforme config
+                cost_per_1k_input=0.0025,
+                cost_per_1k_output=0.010,
                 priority=3
             )
         
@@ -84,6 +91,17 @@ class MultiLLMProvider:
                 cost_per_1k_input=0.003,
                 cost_per_1k_output=0.015,
                 priority=1
+            )
+        
+        # Gemini (Novo)
+        # Verifica GOOGLE_API_KEY conforme definido no config.py
+        if GEMINI_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+            providers["gemini"] = ProviderConfig(
+                name="gemini",
+                model="gemini-1.5-pro-latest",
+                cost_per_1k_input=0.00125,
+                cost_per_1k_output=0.005,
+                priority=2
             )
         
         # AWS Bedrock (checa disponibilidade)
@@ -113,7 +131,7 @@ class MultiLLMProvider:
         if os.getenv("OPENROUTER_API_KEY"):
             providers["openrouter"] = ProviderConfig(
                 name="openrouter",
-                model="anthropic/claude-3-5-sonnet",
+                model="deepseek/deepseek-r1:free",
                 cost_per_1k_input=0.0024,
                 cost_per_1k_output=0.012,
                 priority=2
@@ -152,7 +170,7 @@ class MultiLLMProvider:
         # Seleciona provedor
         provider_name = self.select_provider(complexity)
         if not provider_name:
-            raise ValueError("Nenhum provedor LLM disponível")
+            raise ValueError("Nenhum provedor LLM disponível. Verifique suas API Keys no .env")
         
         try:
             response = self._call_provider(provider_name, prompt, system_prompt)
@@ -174,12 +192,14 @@ class MultiLLMProvider:
                 available = [p for p in self.providers.keys() if p != provider_name]
                 for fallback_provider in available:
                     try:
+                        logger.info(f"Tentando fallback com: {fallback_provider}")
                         response = self._call_provider(fallback_provider, prompt, system_prompt)
                         elapsed = time.time() - start_time
                         self._update_metrics(fallback_provider, elapsed, prompt, response)
                         logger.info(f"Fallback bem-sucedido com {fallback_provider}")
                         return response, fallback_provider
-                    except:
+                    except Exception as fallback_error:
+                        logger.error(f"Erro no fallback {fallback_provider}: {fallback_error}")
                         continue
             
             raise Exception(f"Todos os provedores falharam: {e}")
@@ -194,6 +214,8 @@ class MultiLLMProvider:
             return self._call_bedrock(prompt, system_prompt)
         elif provider_name == "openrouter":
             return self._call_openrouter(prompt, system_prompt)
+        elif provider_name == "gemini":
+            return self._call_gemini(prompt, system_prompt)
         else:
             raise ValueError(f"Provedor não suportado: {provider_name}")
     
@@ -207,7 +229,7 @@ class MultiLLMProvider:
         messages.append({"role": "user", "content": prompt})
         
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=self.providers["openai"].model,
             messages=messages,
             temperature=0.1
         )
@@ -219,13 +241,40 @@ class MultiLLMProvider:
         client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1024,
+            model=self.providers["anthropic"].model,
+            max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": prompt}]
         )
         
         return response.content[0].text
+
+    def _call_gemini(self, prompt: str, system_prompt: str) -> str:
+        """Chama Google Gemini API."""
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        
+        model = genai.GenerativeModel(
+            model_name=self.providers["gemini"].model,
+            system_instruction=system_prompt,
+            safety_settings=[
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+            ]
+        )
+        
+        generation_config = genai.GenerationConfig(
+            temperature=0.1,
+            max_output_tokens=8192
+        )
+        
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config
+        )
+        
+        return response.text
     
     def _call_bedrock(self, prompt: str, system_prompt: str) -> str:
         """Chama AWS Bedrock API."""
@@ -233,6 +282,7 @@ class MultiLLMProvider:
         import json
         
         # Tenta primeiro com AWS Toolkit
+        client = None
         if self.use_aws_toolkit:
             from app.core.aws_toolkit import AWSToolkitDetector
             detector = AWSToolkitDetector()
@@ -245,16 +295,9 @@ class MultiLLMProvider:
                     aws_secret_access_key=creds['secret_key'],
                     region_name=creds.get('region', 'us-east-1')
                 )
-            else:
-                # Fallback para variáveis de ambiente
-                client = boto3.client(
-                    'bedrock-runtime',
-                    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                    region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-                )
-        else:
-            # Usa apenas variáveis de ambiente
+        
+        if not client:
+            # Fallback para variáveis de ambiente
             client = boto3.client(
                 'bedrock-runtime',
                 aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -264,7 +307,7 @@ class MultiLLMProvider:
         
         request_body = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1024,
+            "max_tokens": 4096,
             "system": system_prompt,
             "messages": [
                 {
@@ -275,7 +318,7 @@ class MultiLLMProvider:
         }
         
         response = client.invoke_model(
-            modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
+            modelId=self.providers["bedrock"].model,
             body=json.dumps(request_body)
         )
         
@@ -297,7 +340,7 @@ class MultiLLMProvider:
         messages.append({"role": "user", "content": prompt})
         
         response = client.chat.completions.create(
-            model="anthropic/claude-3-5-sonnet",
+            model=self.providers["openrouter"].model,
             messages=messages,
             temperature=0.1
         )

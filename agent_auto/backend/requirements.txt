@@ -1,32 +1,57 @@
-# LLM Clients (Multi-provider)
-openai>=1.0.0 # OpenAI GPT
-anthropic>=0.25.0 # Anthropic Claude
-boto3>=1.34.0  # AWS Bedrock
-google-generativeai>=0.8.0  # Google PaLM
+# ==========================================
+# 🧠 LLM Clients (SOTA 2026 & Multi-provider)
+# ==========================================
+# Atualizado para >=1.55.0 para corrigir o erro 'proxies' com httpx
+openai>=1.55.0
+# Suporte total ao Claude 3.5 Sonnet mais recente
+anthropic>=0.39.0
+# AWS Bedrock (Zero-Config Integration)
+boto3>=1.34.0
+botocore>=1.34.0
+# Novo SDK do Google (Gemini 3.0 Pro) - Essencial
+google-genai>=0.2.0
 
-# Core Framework
-fastapi>=0.109.0  # Web framework
-uvicorn[standard]>=0.29.0 # ASGI server
+# ==========================================
+# ⚡ Core Framework & API
+# ==========================================
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+# Necessário para processar uploads de arquivos no FastAPI
+python-multipart>=0.0.9
 
-# Cache e Resiliência
-redis>=5.0.0  # Redis client
-pydantic>=2.0.0 # Data validation
-tenacity>=8.2.0  # Retry logic
+# ==========================================
+# ⚙️ Configuração e Ambiente
+# ==========================================
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+# Garante leitura correta do .env em desenvolvimento
+python-dotenv>=1.0.1
 
-# Observabilidade
-prometheus-client>=0.19.0 # Metrics
-structlog>=24.1.0  # Structured logging
+# ==========================================
+# 🛡️ Resiliência, Rede e Cache
+# ==========================================
+redis>=5.0.0
+tenacity>=8.2.0
+# Cliente HTTP moderno (versão compatível com OpenAI novo)
+httpx>=0.27.0
+# Manipulação assíncrona de arquivos (crucial para o Agente)
+aiofiles>=23.2.0
 
-# RAG/Embeddings (v0.2+)
-sentence-transformers>=2.2.0  # Embedding models
-faiss-cpu>=1.7.0  # Vector search
+# ==========================================
+# 📊 Observabilidade
+# ==========================================
+prometheus-client>=0.19.0
+structlog>=24.1.0
 
-# Dev Tools
-pytest>=8.0.0 # Testing framework
-httpx>=0.27.0  # API testing
-black>=24.0.0  # Formatter
+# ==========================================
+# 📚 RAG/Embeddings (Opcional v2)
+# ==========================================
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.0
 
-# AWS Toolkit Integration
-awscli>=1.32.0  # Para profile management
-botocore>=1.34.0  # AWS SDK core
-pydantic-settings>=2.0.0  # Config management
+# ==========================================
+# 🛠️ Dev Tools & CLI
+# ==========================================
+pytest>=8.0.0
+black>=24.0.0
+awscli>=1.32.0

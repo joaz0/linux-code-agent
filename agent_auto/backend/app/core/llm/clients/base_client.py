@@ -8,7 +8,7 @@ import logging
 class BaseLLMClient(ABC):
     """Interface base para todos os clients LLM."""
     
-    def __init__(self, provider: str, model: str, timeout: int = 30):
+    def __init__(self, provider: str, model: str, timeout: int = 30, **kwargs):
         self.provider = provider
         self.model = model
         self.timeout = timeout

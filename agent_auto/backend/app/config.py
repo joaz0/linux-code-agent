@@ -33,15 +33,17 @@ class Settings(BaseSettings):
     aws_default_region: str = Field("us-east-1", env="AWS_DEFAULT_REGION")
     
     # ============================================
-    # MODEL CONFIGURATION (SOTA - State of the Art 2025)
+    # MODEL CONFIGURATION (SOTA - State of the Art 2025/2026)
     # ============================================
     default_llm_provider: LLMProvider = Field(LLMProvider.ANTHROPIC, env="DEFAULT_LLM_PROVIDER")
     
-    # Anthropic: New Claude 3.5 Sonnet (Versão out/2024 - Melhor que Opus 3.0 para código)
+    # Anthropic: New Claude 3.5 Sonnet (Versão out/2024)
     anthropic_model: str = Field("claude-3-5-sonnet-20241022", env="ANTHROPIC_MODEL")
     
-    # OpenRouter: Mapeando para o New Sonnet
-    openrouter_model: str = Field("anthropic/claude-3-5-sonnet", env="OPENROUTER_MODEL")
+    # OpenRouter: DeepSeek R1 (Versão Standard/Paga - Mais estável e "Best Model")
+    # A versão :free (deepseek/deepseek-r1:free) está instável/offline (Erro 404).
+    # Usando a versão oficial que é muito barata ($0.55/M inputs) e SOTA.
+    openrouter_model: str = Field("deepseek/deepseek-r1", env="OPENROUTER_MODEL")
     
     # Bedrock: ID específico da versão v2 do Sonnet 3.5
     bedrock_model_id: str = Field(
@@ -49,10 +51,10 @@ class Settings(BaseSettings):
         env="BEDROCK_MODEL_ID"
     )
     
-    # OpenAI: GPT-4o (O mais capaz atualmente)
+    # OpenAI: GPT-4o
     openai_model: str = Field("gpt-4o", env="OPENAI_MODEL")
 
-    # Gemini: 1.5 Pro (Melhor raciocínio e contexto do Google)
+    # Gemini: 1.5 Pro
     gemini_model: str = Field("gemini-1.5-pro-latest", env="GEMINI_MODEL")
     
     # ============================================
@@ -65,8 +67,8 @@ class Settings(BaseSettings):
     anthropic_base_url: str = Field("https://api.anthropic.com/v1", env="ANTHROPIC_BASE_URL")
     openrouter_base_url: str = Field("https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
     
-    # Timeouts aumentados para modelos complexos
-    llm_timeout: int = Field(60, env="LLM_TIMEOUT")
+    # Timeout aumentado para 180s (Modelos Reasoning como R1 precisam de tempo para "pensar")
+    llm_timeout: int = Field(180, env="LLM_TIMEOUT")
     llm_max_retries: int = Field(3, env="LLM_MAX_RETRIES")
     enable_cache: bool = Field(True, env="ENABLE_CACHE")
     cache_ttl: int = Field(86400, env="CACHE_TTL")
@@ -83,23 +85,23 @@ class Settings(BaseSettings):
     # PROVIDER SELECTION STRATEGY
     # ============================================
     provider_preference: Dict[TaskComplexity, List[LLMProvider]] = {
-        # Simple: Gemini Flash/Pro é rápido e eficiente
+        # Simple
         TaskComplexity.SIMPLE: [LLMProvider.GEMINI, LLMProvider.OPENAI, LLMProvider.ANTHROPIC],
         
-        # Medium: Claude 3.5 Sonnet é o "sweet spot"
-        TaskComplexity.MEDIUM: [LLMProvider.ANTHROPIC, LLMProvider.GEMINI, LLMProvider.OPENROUTER],
+        # Medium
+        TaskComplexity.MEDIUM: [LLMProvider.ANTHROPIC, LLMProvider.OPENROUTER, LLMProvider.GEMINI],
         
-        # Complex: Prioridade total para o Sonnet 3.5 (Melhor raciocínio de código)
-        TaskComplexity.COMPLEX: [LLMProvider.ANTHROPIC, LLMProvider.OPENAI, LLMProvider.GEMINI]
+        # Complex: DeepSeek R1 (OpenRouter) entra como opção de raciocínio profundo
+        TaskComplexity.COMPLEX: [LLMProvider.ANTHROPIC, LLMProvider.OPENROUTER, LLMProvider.OPENAI, LLMProvider.GEMINI]
     }
     
     # Custos Estimados (USD por 1K input tokens)
     cost_per_1k_input: Dict[LLMProvider, float] = {
         LLMProvider.ANTHROPIC: 0.003,      # Claude 3.5 Sonnet
-        LLMProvider.OPENROUTER: 0.003,     # Via OpenRouter
+        LLMProvider.OPENROUTER: 0.00055,   # DeepSeek R1 (~$0.55/1M tokens - muito barato)
         LLMProvider.BEDROCK: 0.003,        # Via AWS
         LLMProvider.OPENAI: 0.0025,        # GPT-4o
-        LLMProvider.GEMINI: 0.00125        # Gemini 1.5 Pro (<128k context)
+        LLMProvider.GEMINI: 0.00125        # Gemini 1.5 Pro
     }
     
     # ============================================
@@ -127,6 +129,44 @@ class Settings(BaseSettings):
     @property
     def is_multi_provider_enabled(self) -> bool:
         return len(self.available_providers) > 1
+
+    def resolve_model_for(self, provider: LLMProvider) -> str:
+        """
+        Retorna o modelo a ser utilizado para um determinado provedor.
+
+        Esta função considera a configuração global `llm_model` como uma
+        sobreposição: se definida no ambiente (.env), esse valor será
+        utilizado independentemente do provedor selecionado. Caso contrário,
+        cada provedor utiliza seu modelo específico configurado em
+        `config.py`.
+
+        Args:
+            provider: O provedor de linguagem para o qual o modelo deve ser resolvido.
+
+        Returns:
+            O nome do modelo a ser utilizado.
+
+        Raises:
+            ValueError: Se for solicitado um provedor desconhecido.
+        """
+        # Se um modelo global estiver definido, utiliza-o para todos os provedores
+        if self.llm_model:
+            return self.llm_model
+
+        # Caso contrário, resolve por provedor
+        if provider == LLMProvider.ANTHROPIC:
+            return self.anthropic_model
+        if provider == LLMProvider.OPENROUTER:
+            return self.openrouter_model
+        if provider == LLMProvider.BEDROCK:
+            return self.bedrock_model_id
+        if provider == LLMProvider.OPENAI:
+            return self.openai_model
+        if provider == LLMProvider.GEMINI:
+            return self.gemini_model
+
+        # Se o provedor não é reconhecido, gera uma exceção
+        raise ValueError(f"Provider não suportado: {provider}")
     
     class Config:
         env_file = ".env"
